@@ -7,6 +7,7 @@ class iris_detection():
         self._img_path = image_path
         self._img = None
 
+    # Load image as numpy array
     def load_image(self):
         self._img = cv2.imread(self._img_path)
         print(self._img)
