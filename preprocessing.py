@@ -9,6 +9,7 @@ class iris_detection():
         self.wide = None
         self._img_path = image_path
         self._img = None
+        self._pupil = None
 
     # Load image as numpy array
     def load_image(self):
@@ -32,6 +33,10 @@ class iris_detection():
         self.mid = cv2.Canny(self._img, 30, 150)
         self.tight = cv2.Canny(self._img, 240, 250)
 
+    # ToDo
+    def detect_pupil(self):
+        pass
+
     def store_image(self):
         cv2.imwrite("data/as-test-gray.png", self._img)
 
@@ -42,5 +47,6 @@ class iris_detection():
     def start_detection(self):
         self.load_image()
         self.convert_to_gray_scale()
+        #self.detect_pupil()
         self.detect_edges()
         self.store_image()
