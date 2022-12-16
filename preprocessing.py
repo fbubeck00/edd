@@ -5,6 +5,7 @@ import math
 
 class iris_detection():
     def __init__(self, image_path, typ):
+        self.img_masked = None
         self.img_gray = None
         self.img_cropped = None
         self.img_path = image_path
@@ -16,18 +17,19 @@ class iris_detection():
         # load image
         self.load_image(self.full_path)
 
-        # reduce noise
-        self._img = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
+        # reduce noise (image smoothing)
+        #self._img = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
+        self._img = cv2.GaussianBlur(self._img, (5, 5), cv2.BORDER_DEFAULT)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 
         self.convert_to_gray_scale(self._img)
 
-        retval, thresholded = cv2.threshold(self.img_gray, 80, 255, cv2.THRESH_TOZERO_INV)
+        _, thresholded = cv2.threshold(self.img_gray, 100, 255, cv2.THRESH_TOZERO_INV)
 
         closed = cv2.erode(cv2.dilate(thresholded, kernel, iterations=1), kernel, iterations=1)
 
-        contours, hierarchy = cv2.findContours(closed, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        contours, _ = cv2.findContours(closed, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
         drawing = np.copy(self._img)
 
@@ -42,15 +44,15 @@ class iris_detection():
 
             extend = area / (bounding_box[2] * bounding_box[3])
 
-            # removing candidates that are too small
-            if area < 20000:
+            # reject the contours that are too small
+            if area < 15000:
                 continue
 
             # reject the contours with big extend
             if extend > 0.8:
                 continue
 
-            # computing the convex hull of the contours
+            # compute the convex hull of the contours
             contour = cv2.convexHull(contour)
 
             # measure of roundness
@@ -77,6 +79,9 @@ class iris_detection():
             try:
                 ellipse = cv2.fitEllipse(contour)
                 cv2.ellipse(drawing, box=ellipse, color=(0, 255, 0))
+
+                img = np.copy(drawing)
+                self.mask_pupil(img, contour)
             except:
                 pass
 
@@ -105,6 +110,14 @@ class iris_detection():
         x, y, w, h = cv2.boundingRect(contour)
 
         self.img_cropped = image[y:y + h, x:x + w]
+
+    def mask_pupil(self, drawing, contour):
+        ellipse = cv2.fitEllipse(contour)
+        self.img_masked = cv2.ellipse(drawing, box=ellipse, color=(0, 0, 0), thickness=-1)
+
+        store_path = "{}_masked.{}".format(self.img_path, self.typ)
+
+        self.store_image(self.img_masked, store_path)
 
     def store_image(self, image, path):
         cv2.imwrite(path, image)
