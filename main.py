@@ -8,18 +8,18 @@ def main():
     image_path2 = "data/as-test2"
     image_path3 = "data/as-test3"
     image_path4 = "data/as-test4"
-    typ = "jpg"
+    image_type = "jpg"
 
-    id = preprocessing.iris_detection(image_path1, typ)
+    id = preprocessing.iris_detection(image_path1, image_type)
     id.detect_contours()
 
-    id2 = preprocessing.iris_detection(image_path2, typ)
+    id2 = preprocessing.iris_detection(image_path2, image_type)
     id2.detect_contours()
 
-    id3 = preprocessing.iris_detection(image_path3, typ)
+    id3 = preprocessing.iris_detection(image_path3, image_type)
     id3.detect_contours()
 
-    id4 = preprocessing.iris_detection(image_path4, typ)
+    id4 = preprocessing.iris_detection(image_path4, image_type)
     id4.detect_contours()
 
 
