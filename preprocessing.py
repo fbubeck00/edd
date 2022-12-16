@@ -5,84 +5,36 @@ import math
 
 class iris_detection():
     def __init__(self, image_path, typ):
-        self.img_test = None
-        self.img1 = None
-        self.img2 = None
-        self.img3 = None
-        self.img4 = None
-        self.img5 = None
-        self.img6 = None
+        self.img_gray = None
+        self.img_cropped = None
         self.img_path = image_path
         self.typ = typ
         self.full_path = "{}.{}".format(image_path, typ)
         self._img = None
-        self._pupil = None
-
-    # Load image as numpy array
-    def load_image(self):
-        self._img = cv2.imread(self.full_path)
-
-        # If the image doesn't exists or is not valid then imread returns None
-        if type(self._img) is type(None):
-            return False
-        else:
-            return True
-
-    def convert_to_gray_scale(self):
-        self._img = cv2.cvtColor(self._img, cv2.COLOR_BGR2GRAY)
-
-    # perform Canny-Edge-Detection
-    def detect_edges(self):
-
-        self.img1 = cv2.Canny(self._img, 10, 150)
-        self.img2 = cv2.Canny(self._img, 50, 150)
-        self.img3 = cv2.Canny(self._img, 150, 150)
-        self.img4 = cv2.Canny(self._img, 50, 10)
-        self.img5 = cv2.Canny(self._img, 50, 50)
-        self.img6 = cv2.Canny(self._img, 50, 150)
-
-    def cut_eyebrows(self):
-        height, width = self._img.shape[:2]
-        print("height: ", height)
-        print("width: ", width)
-        eyebrow_h = int(height / 4)
-        self._img = self._img[eyebrow_h:height, 0:width]
-
-    # ToDo
-    def detect_pupil(self):
-        # reduce noise
-        self._img = cv2.medianBlur(self._img, 5)
-
-        circles = cv2.HoughCircles(self._img, cv2.HOUGH_GRADIENT, dp=1, minDist=self._img.shape[0] / 2,
-                                   param1=100, param2=100, minRadius=0, maxRadius=0)
-
-        if circles is not None:
-            circles = np.uint16(np.around(circles))
-            for i in circles[0, :]:
-                center = (i[0], i[1])
-                # circle center
-                cv2.circle(self._img, center, 1, (0, 100, 100), 3)
-                # circle outline
-                radius = i[2]
-                cv2.circle(self._img, center, radius, (255, 0, 255), 3)
 
     def detect_contours(self):
+        # load image
+        self.load_image(self.full_path)
+
         # reduce noise
-        self._img = cv2.medianBlur(self._img, 5)
+        self._img = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 
-        gray = cv2.cvtColor(self._img, cv2.COLOR_BGR2GRAY)
-        retval, thresholded = cv2.threshold(gray, 80, 255, 0)
+        self.convert_to_gray_scale(self._img)
+
+        retval, thresholded = cv2.threshold(self.img_gray, 80, 255, cv2.THRESH_TOZERO_INV)
 
         closed = cv2.erode(cv2.dilate(thresholded, kernel, iterations=1), kernel, iterations=1)
-        #closed = cv2.morphologyEx(close, cv2.MORPH_CLOSE, kernel)
 
-        contours, hierarchy = cv2.findContours(closed, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        contours, hierarchy = cv2.findContours(closed, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
         drawing = np.copy(self._img)
+
+        # draw all detected contours in blue
         cv2.drawContours(drawing, contours, -1, (255, 0, 0), 2)
 
+        # analyze contours and draw ellipse + center in green
         for contour in contours:
 
             area = cv2.contourArea(contour)
@@ -91,7 +43,7 @@ class iris_detection():
             extend = area / (bounding_box[2] * bounding_box[3])
 
             # removing candidates that are too small
-            if area < 600:
+            if area < 20000:
                 continue
 
             # reject the contours with big extend
@@ -105,7 +57,7 @@ class iris_detection():
             circumference = cv2.arcLength(contour, True)
             circularity = circumference ** 2 / (4 * math.pi * area)
 
-            if circularity > 1.3:
+            if circularity > 1.2:
                 continue
 
             # calculate countour center and draw a dot there
@@ -114,6 +66,13 @@ class iris_detection():
                 center = (int(m['m10'] / m['m00']), int(m['m01'] / m['m00']))
                 cv2.circle(drawing, center, 3, (0, 255, 0), -1)
 
+                # crop image
+                self.crop_image(self._img, contour)
+
+                # store image
+                store_path = "{}_cropped.{}".format(self.img_path, self.typ)
+                self.store_image(self.img_cropped, store_path)
+
             # fit an ellipse around the contour and draw it into the image
             try:
                 ellipse = cv2.fitEllipse(contour)
@@ -121,28 +80,31 @@ class iris_detection():
             except:
                 pass
 
-
         self._img = drawing
-
-
-    def store_image(self):
-
         store_path = "{}_analyzed.{}".format(self.img_path, self.typ)
 
-        cv2.imwrite(store_path, self._img)
+        self.store_image(self._img, store_path)
 
-        cv2.imwrite("data/canny-1.png", self.img1)
-        cv2.imwrite("data/canny-2.png", self.img2)
-        cv2.imwrite("data/canny-3.png", self.img3)
-        cv2.imwrite("data/canny-4.png", self.img4)
-        cv2.imwrite("data/canny-5.png", self.img5)
-        cv2.imwrite("data/canny-6.png", self.img6)
+    #############################################
+    # Helper Methods
+    #############################################
+    # Load image as numpy array
+    def load_image(self, path):
+        self._img = cv2.imread(path)
 
-    def start_detection(self):
-        self.load_image()
-        #self.convert_to_gray_scale()
-        #self.cut_eyebrows()
-        self.detect_edges()
-        #self.detect_pupil()
-        self.detect_contours()
-        self.store_image()
+        # If the image doesn't exists or is not valid then imread returns None
+        if type(self._img) is type(None):
+            return False
+        else:
+            return True
+
+    def convert_to_gray_scale(self, image):
+        self.img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    def crop_image(self, image, contour):
+        x, y, w, h = cv2.boundingRect(contour)
+
+        self.img_cropped = image[y:y + h, x:x + w]
+
+    def store_image(self, image, path):
+        cv2.imwrite(path, image)
