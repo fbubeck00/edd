@@ -4,22 +4,22 @@ import preprocessing
 def main():
     print("Starting...")
 
-    image_path1 = "data/as-test1"
-    image_path2 = "data/as-test2"
-    image_path3 = "data/as-test3"
-    image_path4 = "data/as-test4"
-    typ = "jpg"
+    image_name1 = "as-test1"
+    image_name2 = "as-test2"
+    image_name3 = "as-test3"
+    image_name4 = "as-test4"
+    image_type = "jpg"
 
-    id = preprocessing.iris_detection(image_path1, typ)
+    id = preprocessing.iris_detection(image_name1, image_type)
     id.detect_contours()
 
-    id2 = preprocessing.iris_detection(image_path2, typ)
+    id2 = preprocessing.iris_detection(image_name2, image_type)
     id2.detect_contours()
 
-    id3 = preprocessing.iris_detection(image_path3, typ)
+    id3 = preprocessing.iris_detection(image_name3, image_type)
     id3.detect_contours()
 
-    id4 = preprocessing.iris_detection(image_path4, typ)
+    id4 = preprocessing.iris_detection(image_name4, image_type)
     id4.detect_contours()
 
 
