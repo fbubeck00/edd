@@ -4,18 +4,18 @@ import math
 
 
 class iris_detection():
-    def __init__(self, image_path, image_type):
+    def __init__(self, image_name, image_type):
         self.img_masked = None
         self.img_gray = None
         self.img_cropped = None
-        self.img_path = image_path
+        self.img_name = image_name
         self.image_type = image_type
-        self.full_path = "{}.{}".format(image_path, image_type)
+        self.input_path = "data/input/{}.{}".format(image_name, image_type)
         self._img = None
 
     def detect_contours(self):
         # load image
-        self.load_image(self.full_path)
+        self.load_image(self.input_path)
 
         # reduce noise (image smoothing)
         #self._img = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
@@ -72,7 +72,7 @@ class iris_detection():
                 self.crop_image(self._img, contour)
 
                 # store image
-                store_path = "{}_cropped.{}".format(self.img_path, self.image_type)
+                store_path = "data/cropped/{}_cropped.{}".format(self.img_name, self.image_type)
                 self.store_image(self.img_cropped, store_path)
 
             # fit an ellipse around the contour and draw it into the image
@@ -86,7 +86,7 @@ class iris_detection():
                 pass
 
         self._img = drawing
-        store_path = "{}_analyzed.{}".format(self.img_path, self.image_type)
+        store_path = "data/analyzed/{}_analyzed.{}".format(self.img_name, self.image_type)
 
         self.store_image(self._img, store_path)
 
@@ -115,7 +115,7 @@ class iris_detection():
         ellipse = cv2.fitEllipse(contour)
         self.img_masked = cv2.ellipse(drawing, box=ellipse, color=(0, 0, 0), thickness=-1)
 
-        store_path = "{}_masked.{}".format(self.img_path, self.image_type)
+        store_path = "data/masked/{}_masked.{}".format(self.img_name, self.image_type)
 
         self.store_image(self.img_masked, store_path)
 
