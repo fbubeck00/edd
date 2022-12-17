@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 
 
 class iris_detection():
@@ -18,17 +19,37 @@ class iris_detection():
         self.load_image(self.input_path)
 
         # reduce noise (image smoothing)
-        #self._img = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
+        # self._img = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
         self._img = cv2.GaussianBlur(self._img, (5, 5), cv2.BORDER_DEFAULT)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 
+        # convert image to gray scale
         self.convert_to_gray_scale(self._img)
 
-        _, thresholded = cv2.threshold(self.img_gray, 100, 255, cv2.THRESH_TOZERO_INV)
+        # calculate and plot histogram
+        self.create_histogram(self.img_gray)
 
+        #####################################
+        # Edge Features
+        #####################################
+        # calculate thresholded image
+        _, thresholded = cv2.threshold(self.img_gray, 100, 255, cv2.THRESH_TOZERO_INV)
+        store_path = "data/thresholded/{}_thresholded.{}".format(self.img_name, self.image_type)
+        self.store_image(thresholded, store_path)
+
+        # perform canny edge detection
+        canny = cv2.Canny(self.img_gray, 20, 100)
+        store_path = "data/canny/{}_canny.{}".format(self.img_name, self.image_type)
+        self.store_image(canny, store_path)
+
+        #####################################
+        # Contours
+        #####################################
+        # Dilate and erode image
         closed = cv2.erode(cv2.dilate(thresholded, kernel, iterations=1), kernel, iterations=1)
 
+        # find contours
         contours, _ = cv2.findContours(closed, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
         drawing = np.copy(self._img)
@@ -36,7 +57,10 @@ class iris_detection():
         # draw all detected contours in blue
         cv2.drawContours(drawing, contours, -1, (255, 0, 0), 2)
 
-        # analyze contours and draw ellipse + center in green
+        #####################################
+        # Contour analysis and decision
+        #####################################
+        # goal: draw ellipse + center in green
         for contour in contours:
 
             area = cv2.contourArea(contour)
@@ -105,6 +129,17 @@ class iris_detection():
 
     def convert_to_gray_scale(self, image):
         self.img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    def create_histogram(self, image):
+        fig = plt.figure(figsize=(6, 4))
+        hist = cv2.calcHist([image], [0], None, [256], [0, 256])
+        plt.title("Grayscale Histogram")
+        plt.xlabel("Bins")
+        plt.ylabel("# of Pixels")
+        plt.plot(hist)
+        plt.xlim([0, 256])
+        store_path = "data/histograms/{}_histogram.{}".format(self.img_name, self.image_type)
+        fig.savefig(store_path)
 
     def crop_image(self, image, contour):
         x, y, w, h = cv2.boundingRect(contour)
