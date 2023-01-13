@@ -1,26 +1,25 @@
+import os
 import preprocessing
+import glob
+import cv2
 
 
 def main():
     print("Starting...")
 
-    image_name1 = "as-test1"
-    image_name2 = "as-test2"
-    image_name3 = "as-test3"
-    image_name4 = "as-test4"
-    image_type = "jpg"
+    for img in glob.glob("data/image_dataset/*.bmp"):
+        # extract file name with regex
+        text = os.path.basename(img)
+        image_name, _, _ = text.partition('.')
 
-    id = preprocessing.iris_detection(image_name1, image_type)
-    id.detect_contours()
+        # read image from folder
+        image = cv2.imread(img)
 
-    id2 = preprocessing.iris_detection(image_name2, image_type)
-    id2.detect_contours()
+        # start preprocess image
+        detector = preprocessing.iris_detection(image, image_name)
+        detector.detect_contours()
 
-    id3 = preprocessing.iris_detection(image_name3, image_type)
-    id3.detect_contours()
-
-    id4 = preprocessing.iris_detection(image_name4, image_type)
-    id4.detect_contours()
+        print("preprocessed image: {}".format(image_name))
 
 
 if __name__ == '__main__':

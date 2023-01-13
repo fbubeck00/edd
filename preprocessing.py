@@ -5,22 +5,19 @@ import matplotlib.pyplot as plt
 
 
 class iris_detection():
-    def __init__(self, image_name, image_type):
+    def __init__(self, image, image_name):
         self.img_masked = None
         self.img_gray = None
         self.img_cropped = None
+        self._img = image
         self.img_name = image_name
-        self.image_type = image_type
-        self.input_path = "data/input/{}.{}".format(image_name, image_type)
-        self._img = None
+        self.img_type = "png"
 
     def detect_contours(self):
-        # load image
-        self.load_image(self.input_path)
 
         # reduce noise (image smoothing)
-        # self._img = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
-        self._img = cv2.GaussianBlur(self._img, (5, 5), cv2.BORDER_DEFAULT)
+        self._img = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
+        # self._img = cv2.GaussianBlur(self._img, (5, 5), cv2.BORDER_DEFAULT)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 
@@ -35,19 +32,19 @@ class iris_detection():
         #####################################
         # calculate thresholded image
         _, thresholded = cv2.threshold(self.img_gray, 100, 255, cv2.THRESH_TOZERO_INV)
-        store_path = "data/thresholded/{}_thresholded.{}".format(self.img_name, self.image_type)
+        store_path = "data/thresholded/{}_thresholded.{}".format(self.img_name, self.img_type)
         self.store_image(thresholded, store_path)
 
         # perform canny edge detection
-        canny = cv2.Canny(self.img_gray, 20, 100)
-        store_path = "data/canny/{}_canny.{}".format(self.img_name, self.image_type)
+        canny = cv2.Canny(self.img_gray, 60, 40)
+        store_path = "data/canny/{}_canny.{}".format(self.img_name, self.img_type)
         self.store_image(canny, store_path)
 
         #####################################
         # Contours
         #####################################
         # Dilate and erode image
-        closed = cv2.erode(cv2.dilate(thresholded, kernel, iterations=1), kernel, iterations=1)
+        closed = cv2.erode(cv2.dilate(canny, kernel, iterations=1), kernel, iterations=1)
 
         # find contours
         contours, _ = cv2.findContours(closed, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -69,11 +66,11 @@ class iris_detection():
             extend = area / (bounding_box[2] * bounding_box[3])
 
             # reject the contours that are too small
-            if area < 15000:
+            if area < 5000:
                 continue
 
             # reject the contours with big extend
-            if extend > 0.8:
+            if extend > 0.9:
                 continue
 
             # compute the convex hull of the contours
@@ -96,7 +93,7 @@ class iris_detection():
                 self.crop_image(self._img, contour)
 
                 # store image
-                store_path = "data/cropped/{}_cropped.{}".format(self.img_name, self.image_type)
+                store_path = "data/cropped/{}_cropped.{}".format(self.img_name, self.img_type)
                 self.store_image(self.img_cropped, store_path)
 
             # fit an ellipse around the contour and draw it into the image
@@ -110,7 +107,7 @@ class iris_detection():
                 pass
 
         self._img = drawing
-        store_path = "data/analyzed/{}_analyzed.{}".format(self.img_name, self.image_type)
+        store_path = "data/analyzed/{}_analyzed.{}".format(self.img_name, self.img_type)
 
         self.store_image(self._img, store_path)
 
@@ -138,7 +135,7 @@ class iris_detection():
         plt.ylabel("# of Pixels")
         plt.plot(hist)
         plt.xlim([0, 256])
-        store_path = "data/histograms/{}_histogram.{}".format(self.img_name, self.image_type)
+        store_path = "data/histograms/{}_histogram.{}".format(self.img_name, self.img_type)
         fig.savefig(store_path)
 
     def crop_image(self, image, contour):
@@ -150,7 +147,7 @@ class iris_detection():
         ellipse = cv2.fitEllipse(contour)
         self.img_masked = cv2.ellipse(drawing, box=ellipse, color=(0, 0, 0), thickness=-1)
 
-        store_path = "data/masked/{}_masked.{}".format(self.img_name, self.image_type)
+        store_path = "data/masked/{}_masked.{}".format(self.img_name, self.img_type)
 
         self.store_image(self.img_masked, store_path)
 
