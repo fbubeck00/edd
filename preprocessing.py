@@ -9,6 +9,7 @@ class iris_detection():
         self.img_masked = None
         self.img_gray = None
         self.img_cropped = None
+        self.img_cleaned = None
         self._img = image
         self.img_name = image_name
         self.img_type = "png"
@@ -27,16 +28,19 @@ class iris_detection():
         # calculate and plot histogram
         self.create_histogram(self.img_gray)
 
+        # cut eyebrows
+        self.cut_eyebrows(self._img)
+
         #####################################
         # Edge Features
         #####################################
         # calculate thresholded image
-        _, thresholded = cv2.threshold(self.img_gray, 100, 255, cv2.THRESH_TOZERO_INV)
+        _, thresholded = cv2.threshold(self.img_cleaned, 100, 255, cv2.THRESH_TOZERO_INV)
         store_path = "data/thresholded/{}_thresholded.{}".format(self.img_name, self.img_type)
         self.store_image(thresholded, store_path)
 
         # perform canny edge detection
-        canny = cv2.Canny(self.img_gray, 60, 40)
+        canny = cv2.Canny(self.img_cleaned, 40, 40)
         store_path = "data/canny/{}_canny.{}".format(self.img_name, self.img_type)
         self.store_image(canny, store_path)
 
@@ -47,9 +51,9 @@ class iris_detection():
         closed = cv2.erode(cv2.dilate(canny, kernel, iterations=1), kernel, iterations=1)
 
         # find contours
-        contours, _ = cv2.findContours(closed, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        contours, _ = cv2.findContours(closed, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        drawing = np.copy(self._img)
+        drawing = np.copy(self.img_cleaned)
 
         # draw all detected contours in blue
         cv2.drawContours(drawing, contours, -1, (255, 0, 0), 2)
@@ -66,7 +70,7 @@ class iris_detection():
             extend = area / (bounding_box[2] * bounding_box[3])
 
             # reject the contours that are too small
-            if area < 5000:
+            if area < 5000 or area > 9500:
                 continue
 
             # reject the contours with big extend
@@ -80,7 +84,7 @@ class iris_detection():
             circumference = cv2.arcLength(contour, True)
             circularity = circumference ** 2 / (4 * math.pi * area)
 
-            if circularity > 1.2:
+            if circularity > 3:
                 continue
 
             # calculate contour center and draw a dot there
@@ -89,22 +93,22 @@ class iris_detection():
                 center = (int(m['m10'] / m['m00']), int(m['m01'] / m['m00']))
                 cv2.circle(drawing, center, 3, (0, 255, 0), -1)
 
+                # draw white circle to mask pupil
+                self.mask_pupil(self.img_cleaned, center)
+
                 # crop image
-                self.crop_image(self._img, contour)
+                self.crop_image(self.img_cleaned, contour)
 
                 # store image
                 store_path = "data/cropped/{}_cropped.{}".format(self.img_name, self.img_type)
                 self.store_image(self.img_cropped, store_path)
 
             # fit an ellipse around the contour and draw it into the image
-            try:
-                ellipse = cv2.fitEllipse(contour)
-                cv2.ellipse(drawing, box=ellipse, color=(0, 255, 0))
+            ellipse = cv2.fitEllipse(contour)
+            cv2.ellipse(drawing, box=ellipse, color=(0, 255, 0))
 
-                img = np.copy(drawing)
-                self.mask_pupil(img, contour)
-            except:
-                pass
+            img = np.copy(drawing)
+            self.mask_iris(img, contour)
 
         self._img = drawing
         store_path = "data/analyzed/{}_analyzed.{}".format(self.img_name, self.img_type)
@@ -138,12 +142,20 @@ class iris_detection():
         store_path = "data/histograms/{}_histogram.{}".format(self.img_name, self.img_type)
         fig.savefig(store_path)
 
+    def cut_eyebrows(self, image):
+        height, width = image.shape[:2]
+        eyebrow_h = int(height / 5)
+        self.img_cleaned = image[eyebrow_h:height, 0:width]
+
     def crop_image(self, image, contour):
         x, y, w, h = cv2.boundingRect(contour)
 
         self.img_cropped = image[y:y + h, x:x + w]
 
-    def mask_pupil(self, drawing, contour):
+    def mask_pupil(self, image, center):
+        cv2.circle(image, center, 30, (255, 255, 255), -1)
+
+    def mask_iris(self, drawing, contour):
         ellipse = cv2.fitEllipse(contour)
         self.img_masked = cv2.ellipse(drawing, box=ellipse, color=(0, 0, 0), thickness=-1)
 
