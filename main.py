@@ -1,5 +1,6 @@
 import os
 import preprocessing
+import preprocessing_v2
 import glob
 import cv2
 
@@ -16,7 +17,7 @@ def main():
         image = cv2.imread(img)
 
         # start preprocess image
-        detector = preprocessing.iris_detection(image, image_name)
+        detector = preprocessing_v2.iris_detection_v2(image, image_name)
         detector.detect_contours()
 
         print("preprocessed image: {}".format(image_name))
