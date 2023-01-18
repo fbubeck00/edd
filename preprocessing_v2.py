@@ -90,7 +90,7 @@ class iris_detection_v2():
                 center = (int(m['m10'] / m['m00']), int(m['m01'] / m['m00']))
                 cv2.circle(drawing, center, 3, (0, 255, 0), -1)
 
-                # draw white circle to mask pupil
+                # draw black circle to mask pupil
                 self.mask_pupil(self._img, center)
 
                 # crop image
@@ -111,6 +111,8 @@ class iris_detection_v2():
         store_path = "data/analyzed/{}_analyzed.{}".format(self.img_name, self.img_type)
 
         self.store_image(self._img, store_path)
+
+        return self.img_crop
 
     #############################################
     # Helper Methods
@@ -147,7 +149,7 @@ class iris_detection_v2():
         return image[y:y + h, x:x + w]
 
     def mask_pupil(self, image, center):
-        cv2.circle(image, center, 28, (0, 0, 0), -1)
+        cv2.circle(image, center, 30, (0, 0, 0), -1)
 
     def mask_iris(self, drawing, contour):
         ellipse = cv2.fitEllipse(contour)
