@@ -1,7 +1,10 @@
 import os
+
+import numpy as np
+
 import preprocessing
 import preprocessing_v2
-import data_engineering
+from data_engineering import dataset_creation
 import glob
 import cv2
 
@@ -9,8 +12,7 @@ import cv2
 def main():
     print("Starting...")
 
-    # Dataset init
-    dataset = data_engineering.data_engineering()
+    temp_dataset = []
 
     # iterate over files in folder and call preprocessing method
     for img in glob.glob("data/image_dataset/*.bmp"):
@@ -22,14 +24,18 @@ def main():
         image = cv2.imread(img)
 
         # start preprocess image
-        detector = preprocessing_v2.iris_detection_v2(image, image_name)
-        img_result = detector.detect_contours()
-        print("preprocessed image: {}".format(image_name))
+        print("preprocess image: {}".format(image_name))
+        detector = preprocessing_v2.iris_detection_v2(image, image_name, temp_dataset)
+        image_dataset = detector.preprocess_image()
 
-        dataset.add_to_dataset(img_result)
+    ###############################
+    # Image Dataset
+    ###############################
+    dataset = np.array(image_dataset)
+    print("Dataset format: {}".format(dataset.shape))
+    print("Image Format: {}".format(dataset[0].shape))
+    print("Number of Images: {}".format(dataset.shape[0]))
 
-    # store dataset
-    dataset.store_dataset()
 
 
 if __name__ == '__main__':

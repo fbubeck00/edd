@@ -2,19 +2,21 @@ import cv2
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from data_engineering import dataset_creation
 
 
 class iris_detection_v2():
-    def __init__(self, image, image_name):
+    def __init__(self, image, image_name, dataset):
         self.img_mask = None
         self.img_gray = None
         self.img_crop = None
         self.img_cut = None
+        self.dataset = dataset
         self._img = image
         self.img_name = image_name
         self.img_type = "png"
 
-    def detect_contours(self):
+    def preprocess_image(self):
 
         # reduce noise (image smoothing)
         self.img_smooth = cv2.bilateralFilter(self._img, d=9, sigmaColor=150, sigmaSpace=20)
@@ -22,22 +24,21 @@ class iris_detection_v2():
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 
-        # convert image to gray scale
-        self.convert_to_gray_scale(self.img_smooth)
-
         # calculate and plot histogram
-        self.create_histogram(self.img_gray)
+        self.create_histogram(self.img_smooth)
+
+        self.convert_to_gray_scale(self.img_smooth)
 
         #####################################
         # Edge Features
         #####################################
         # calculate thresholded image
-        _, thresholded = cv2.threshold(self.img_smooth, 100, 255, cv2.THRESH_TOZERO_INV)
+        _, thresholded = cv2.threshold(self.img_gray, 100, 255, cv2.THRESH_TOZERO_INV)
         store_path = "data/thresholded/{}_thresholded.{}".format(self.img_name, self.img_type)
         self.store_image(thresholded, store_path)
 
         # perform canny edge detection
-        canny = cv2.Canny(self.img_smooth, 15, 15)
+        canny = cv2.Canny(self.img_gray, 15, 15)
         store_path = "data/canny/{}_canny.{}".format(self.img_name, self.img_type)
         self.store_image(canny, store_path)
 
@@ -96,9 +97,12 @@ class iris_detection_v2():
                 # crop image
                 self.img_crop = self.crop_image(self._img, center)
 
-                # store image
+                # store image as .png
                 store_path = "data/cropped/{}_cropped.{}".format(self.img_name, self.img_type)
                 self.store_image(self.img_crop, store_path)
+
+                # store image in dataset
+                dataset_creation.add_to_dataset(self.img_crop, self.dataset)
 
             # fit an ellipse around the contour and draw it into the image
             ellipse = cv2.fitEllipse(contour)
@@ -112,7 +116,7 @@ class iris_detection_v2():
 
         self.store_image(self._img, store_path)
 
-        return self.img_crop
+        return self.dataset
 
     #############################################
     # Helper Methods
